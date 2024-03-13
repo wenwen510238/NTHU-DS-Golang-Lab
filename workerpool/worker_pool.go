@@ -69,11 +69,12 @@ func (wp *workerPool) run(ctx context.Context) {
 	defer wp.wg.Done()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ctx.Done(): //超時運作的task可以被cancel，避免浪費資源(Ctrl+C)
 			fmt.Println("工作結束")
 			return
-		case task, ok := <-wp.tasks:
-			if !ok {
+		default:
+			task, ok := <-wp.tasks
+			if !ok { //當通道中沒有任務需要處理時通道會關閉，ok=false
 				fmt.Println("通道已關閉")
 				return
 			}
@@ -85,13 +86,6 @@ func (wp *workerPool) run(ctx context.Context) {
 			}
 			result := task.Func(task.Args...)
 			wp.results <- result
-			// select {
-			// case wp.results <- result:
-			// 	// wp.results <- result
-			// case <-ctx.Done():
-			// 	fmt.Println("收到取消信號")
-			// 	return
-			// }
 		}
 	}
 	// Keeps fetching task from the task channel, do the task,
